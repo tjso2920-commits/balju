@@ -37,7 +37,7 @@
 
   /* 시트 chrome */
   .topbar{position:sticky; top:0; z-index:20; background:#fff; border-bottom:1px solid #d5d9e0; padding:9px 10px; display:flex; align-items:center; gap:8px;}
-  .topbar h1{font-size:16px; margin:0; font-weight:900;}
+  .topbar h1{font-size:19px; margin:0; font-weight:900; font-family:"Nanum Myeongjo",serif; color:#2f6fe0; letter-spacing:-0.2px;}
   .topbar .spacer{flex:1;}
   .tabs{display:flex; gap:6px; overflow-x:auto; padding:9px 10px; background:#f4f5f7; border-bottom:1px solid #d5d9e0; position:sticky; top:51px; z-index:19;}
   .tab{white-space:nowrap; background:#fff; border:1px solid #c7ccd4; color:#556; padding:7px 15px; border-radius:20px; font-size:14px; font-weight:800;}
@@ -132,13 +132,13 @@
   .tvadd input{flex:1; background:#fff; border:1px dashed #9aa3af; border-radius:10px; padding:12px 14px; font-size:15px;}
   .tvtpl{width:100%; min-height:120px; border:1px solid #c7ccd4; border-radius:8px; padding:10px 12px; font-size:14px; line-height:1.6; font-family:inherit; resize:vertical;}
   .tvrow.edit{cursor:default;}
-  .tvrow .tvname{flex:1; border:1px solid #bbb; border-radius:6px; padding:8px; font-size:15px; font-weight:600;}
+  .tvrow .tvname{flex:1; border:1px solid #bbb; border-radius:6px; padding:8px; font-size:16px; font-weight:600; -webkit-appearance:none;}
   .tvrow .mini{flex:none; width:38px; height:38px; border-radius:8px; border:1px solid #c7ccd4; background:#f4f5f7; font-size:16px; font-weight:800;}
   .tvrow .mini.del{color:#e04747; border-color:#f0b6b6;}
   .tvrow .mini.hlon{background:#ffe23d; border-color:#e6c700; color:#5a4b00;}
   .tvrow .mini.hlbtn{min-width:56px; font-size:13px; font-weight:800; padding:0 8px;}
   .boardaddbar{display:flex; gap:8px; align-items:stretch;}
-  .boardaddbar .tvname{flex:1;}
+  .boardaddbar .tvname{flex:1; font-size:16px; padding:10px 12px; border:1px solid #c7ccd4; border-radius:10px; -webkit-appearance:none; background:#fff; color:#111;}
   .boardaddbar .boardaddbtn{white-space:nowrap; min-width:82px; font-size:16px; font-weight:800;}
   .boardpreview{margin-top:16px; background:#fff; border:1px solid #dfe3ea; border-radius:12px; padding:14px;}
   .boardpreview .pvlabel{font-size:12px; font-weight:800; color:#889; margin-bottom:8px;}
@@ -211,6 +211,7 @@
     <button class="btn ghost sm" onclick="goHome()">← 홈</button>
     <h1 id="boardTitle">비원발주</h1>
     <div class="spacer"></div>
+    <button class="btn sm" onclick="openCommonItemsModal()">🎯 자주품목</button>
   </div>
   <div class="tabs" id="boardStores"></div>
   <div class="tvbody" id="boardBody"></div>
@@ -326,6 +327,30 @@ function openKeyModal(){
   setTimeout(()=>{const i=$('#keyInput'); if(i)i.focus();},60);
 }
 function closeKeyModal(){const m=$('#keyModal'); if(m)m.remove();}
+function openCommonItemsModal(){
+  closeCommonItemsModal();
+  const v=VB(); if(!v.commonItems)v.commonItems=[];
+  const cur=v.commonItems.join(", ");
+  const m=document.createElement('div'); m.className='modal'; m.id='commonItemsModal';
+  m.onclick=e=>{ if(e.target===m) closeCommonItemsModal(); };
+  m.innerHTML='<div class="card">'
+    +'<h3>🎯 자주 쓰는 품목</h3>'
+    +'<p style="margin:0 0 10px;color:#333;font-size:14px;line-height:1.7">여기 적어두면 🤖 AI 음성이 발음을 그 품목명 표기에 맞춰 인식해요(정확도↑). 쉼표(,)로 구분해서 적어줘. 목록에 없는 품목도 자유롭게 인식되니 다 못 적어도 괜찮음.</p>'
+    +'<textarea id="commonItemsInput" placeholder="예: 메로, 우럭, 광어, 대파, 양파" style="width:100%;min-height:110px;border:1px solid #c7ccd4;border-radius:9px;padding:12px;font-size:16px;font-family:inherit;line-height:1.6;box-sizing:border-box">'+esc(cur)+'</textarea>'
+    +'<div class="mrow"><button class="btn ok" onclick="saveCommonItemsFromModal()">저장</button>'
+    +'<button class="btn" onclick="closeCommonItemsModal()">닫기</button></div>'
+    +'</div>';
+  document.body.appendChild(m);
+  setTimeout(()=>{const i=$('#commonItemsInput'); if(i)i.focus();},60);
+}
+function closeCommonItemsModal(){const m=$('#commonItemsModal'); if(m)m.remove();}
+function saveCommonItemsFromModal(){
+  const i=$('#commonItemsInput'); const raw=(i?i.value:"").trim();
+  const arr=raw.split(/[,\n]/).map(s=>s.trim()).filter(Boolean);
+  VB().commonItems=arr; saveDB();
+  toast(arr.length?("자주품목 "+arr.length+"개 저장됨"):"자주품목 비움");
+  closeCommonItemsModal();
+}
 function saveKeyFromModal(){const i=$('#keyInput'); const k=(i?i.value:"").trim();
   try{ if(k){localStorage.setItem(GKEY,k); toast("AI 키 저장됨 · 이제 🤖 AI 버튼 사용 가능");} else {localStorage.removeItem(GKEY); toast("키가 비어있음");} }catch(e){toast("이 브라우저는 키 저장 불가");}
   closeKeyModal();
@@ -791,10 +816,14 @@ async function sendToGemini(blob){
   let b64; try{b64=await blobB64(blob);}catch(e){toast("녹음 처리 오류");return;}
   const board=inBoardMode();
   const items=board?[]:allItems().map(it=>it.name);
+  const commonItems=board?(VB().commonItems||[]):[];
+  const hintText=commonItems.length
+    ? ('\n\n참고용 자주 발주하는 품목(정확한 표기 예시): '+commonItems.join(", ")+'. 발음이 이 목록과 비슷하면 이 표기를 우선 사용하되, 목록에 없는 품목도 자유롭게 인식해라.')
+    : '';
   const prompt= board
     ? '다음 오디오는 한국어 발주(주문) 음성이다. 말한 품목들을 말한 순서대로 뽑아라. '
       +'각 항목은 "품목 수량" 형태의 짧은 문자열로 만들되, 수량의 한국어 수사·단위는 숫자·기호로 정규화하라(예: "밀 사"→"밀 4", "한 박스"→"1박스", "두 개"→"2개", "삼백그램"→"300g"). '
-      +'수량이 없으면 품목만. 반드시 JSON 배열만 출력(설명·마크다운 금지): ["밀 4","단새우","벽 2"]'
+      +'수량이 없으면 품목만. 반드시 JSON 배열만 출력(설명·마크다운 금지): ["밀 4","단새우","벽 2"]'+hintText
     : '다음 오디오는 한국어 식자재 발주 음성이다. 아래 "품목목록" 중에서 말한 품목만 골라 수량을 뽑아라. '
       +'수량은 한국어 수사·단위를 숫자와 기호로 정규화하라(예: "한 박스"→"1박스", "삼백그램"→"300g", "두 단"→"2단"). '
       +'목록에 없는 품목은 무시. 반드시 JSON 객체만 출력(설명·마크다운 금지): {"품목명":"수량"}.\n\n품목목록: '+items.join(", ");
@@ -1043,7 +1072,7 @@ function VB(){ return DB.vendors[curVendor]; }
 const BOARD_FONT='"Nanum Myeongjo", Gungsuh, Batang, serif';
 let boardFontsReady=false, boardTimer=null;
 function openBoardVendor(){
-  const v=VB(); if(!v.lines){ v.lines=[]; saveDB(); }
+  const v=VB(); if(!v.lines){ v.lines=[]; saveDB(); } if(!v.commonItems){ v.commonItems=[]; saveDB(); }
   $('#home').classList.add('hide'); $('#sheet').classList.add('hide'); $('#textsheet').classList.add('hide'); $('#boardsheet').classList.remove('hide');
   showVoiceFabs(true);
   $('#boardTitle').textContent=v.name;
