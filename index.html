@@ -145,6 +145,7 @@
   .tvadd input{flex:1; background:#fff; border:1px dashed #9aa3af; border-radius:10px; padding:12px 14px; font-size:15px;}
   .tvtpl{width:100%; min-height:120px; border:1px solid #c7ccd4; border-radius:8px; padding:10px 12px; font-size:14px; line-height:1.6; font-family:inherit; resize:vertical;}
   .tvrow.edit{cursor:default;}
+  .tab .tcnt{display:inline-block; min-width:19px; margin-left:6px; padding:0 5px; border-radius:10px; background:#e04747; color:#fff; font-size:12px; line-height:19px; text-align:center;}
   /* 가게별 자주 / 전체 보기 */
   .tvview{display:flex; gap:6px; margin-bottom:6px; background:#dfe3ea; border-radius:12px; padding:4px;}
   .tvview button{flex:1; min-height:44px; border:0; border-radius:9px; background:transparent; color:#556; font-size:15px; font-weight:800;}
@@ -1183,12 +1184,18 @@ function openTextVendor(){
   renderTvStores(); renderTvBody(); window.scrollTo(0,0);
   if(!storageOK) toast("⚠ 미리보기라 저장 안됨 · 배포후 폰에서 저장됨");
 }
+function tvStoreCheckCount(i){ // 그 가게에 체크해둔 품목 수 (탭에 빨간 숫자로 표시)
+  const v=VT(), c=(i===v.activeStore)?v.checked:((v.storeChecks&&v.storeChecks[v.storeNames[i]]||{}).checked||{});
+  return v.items.filter(it=>c[it.id]).length;
+}
 function renderTvStores(){
-  const el=$('#tvStores'); el.innerHTML="";
+  const el=$('#tvStores'), sl=el.scrollLeft; el.innerHTML="";
   VT().storeNames.forEach((nm,i)=>{const b=document.createElement('button');
     b.className="tab"+(i===VT().activeStore?" on":""); b.textContent=nm;
-    b.onclick=()=>{VT().activeStore=i; tvQuery=""; saveDB(); renderTvStores(); renderTvBody();};
+    const n=tvStoreCheckCount(i); if(n){const t=document.createElement('span'); t.className="tcnt"; t.textContent=n; b.appendChild(t);}
+    b.onclick=()=>tvSwitchStore(i);
     el.appendChild(b);});
+  el.scrollLeft=sl;
 }
 function renderTvBody(){
   const v=VT(), body=$('#tvBody'); body.innerHTML="";
@@ -1286,6 +1293,7 @@ function tvMessage(){
 function updateTvPreview(){
   const t=$('#tvText'); if(t) t.textContent=tvMessage();
   const c=$('#tvCount'); if(c){const n=VT().items.filter(it=>VT().checked[it.id]).length; c.textContent=n?n+"개 선택됨":"";}
+  if(!$('#textsheet').classList.contains('hide')) renderTvStores();
 }
 async function tvShare(){
   const msg=tvMessage();
@@ -1311,10 +1319,22 @@ function fallbackCopy(text,done){
 }
 function toggleTvEdit(){ tvEdit=!tvEdit; $('#tvEdit').textContent=tvEdit?"✓ 완료":"✎ 편집"; $('#tvEdit').classList.toggle('acc',tvEdit); renderTvBody(); }
 function tvAddItem(){ const el=$('#tvNewName'); const nm=(el?el.value:"").trim(); if(!nm){toast("품목 이름을 적어줘"); if(el)el.focus(); return;} const ni={id:uid(),name:nm}; VT().items.push(ni); tvAddToStoreFavs(ni.id); saveDB(); renderTvBody(); const n=$('#tvNewName'); if(n)n.focus(); toast("추가됨: "+nm); }
-function tvDel(idx){ const it=VT().items[idx]; VT().items.splice(idx,1); if(VT().favs)Object.values(VT().favs).forEach(f=>{const i=f.indexOf(it.id); if(i>=0)f.splice(i,1);}); delete VT().checked[it.id]; if(VT().qty)delete VT().qty[it.id]; saveDB(); renderTvBody(); toast("삭제됨"); }
+function tvDel(idx){ const it=VT().items[idx]; VT().items.splice(idx,1); if(VT().storeChecks)Object.values(VT().storeChecks).forEach(c=>{delete c.checked[it.id]; delete c.qty[it.id];}); if(VT().favs)Object.values(VT().favs).forEach(f=>{const i=f.indexOf(it.id); if(i>=0)f.splice(i,1);}); delete VT().checked[it.id]; if(VT().qty)delete VT().qty[it.id]; saveDB(); renderTvBody(); toast("삭제됨"); }
 function tvMove(idx,dir){ const a=VT().items, j=idx+dir; if(j<0||j>=a.length)return; const t=a[idx]; a[idx]=a[j]; a[j]=t; saveDB(); renderTvBody(); }
+/* 가게마다 체크·수량을 따로 보관: 지금 가게 것은 v.checked/v.qty, 나머지 가게 것은 v.storeChecks에 넣어둠 */
+function tvSwitchStore(i){
+  const v=VT();
+  if(i!==v.activeStore){
+    if(!v.storeChecks)v.storeChecks={};
+    v.storeChecks[v.storeNames[v.activeStore]]={checked:v.checked||{},qty:v.qty||{}};
+    const n=v.storeChecks[v.storeNames[i]]||{checked:{},qty:{}};
+    v.checked=n.checked; v.qty=n.qty; delete v.storeChecks[v.storeNames[i]];
+    v.activeStore=i;
+  }
+  tvQuery=""; saveDB(); renderTvStores(); renderTvBody();
+}
 function tvClearChecks(){ VT().checked={}; VT().qty={}; saveDB(); renderTvBody(); }
-function tvResetItems(){ if(!confirm(VT().name+" 품목을 기본목록으로 되돌릴까? 편집내용 사라짐."))return; VT().items=tvDefaults(VT()).items.map(n=>({id:uid(),name:n})); VT().favs=buildFavs(VT(),tvDefaults(VT()).favs); VT().checked={}; VT().qty={}; saveDB(); renderTvBody(); }
+function tvResetItems(){ if(!confirm(VT().name+" 품목을 기본목록으로 되돌릴까? 편집내용 사라짐."))return; VT().items=tvDefaults(VT()).items.map(n=>({id:uid(),name:n})); VT().favs=buildFavs(VT(),tvDefaults(VT()).favs); VT().storeChecks={}; VT().checked={}; VT().qty={}; saveDB(); renderTvBody(); }
 function tvResetTpl(){ VT().template=tvDefaults(VT()).template; saveDB(); renderTvBody(); toast("문구 기본값으로"); }
 
 /* ===== 비원발주 (손글씨 화이트보드 이미지) ===== */
