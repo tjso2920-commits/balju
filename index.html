@@ -142,8 +142,17 @@
   .tvadd input{flex:1; background:#fff; border:1px dashed #9aa3af; border-radius:10px; padding:12px 14px; font-size:15px;}
   .tvtpl{width:100%; min-height:120px; border:1px solid #c7ccd4; border-radius:8px; padding:10px 12px; font-size:14px; line-height:1.6; font-family:inherit; resize:vertical;}
   .tvrow.edit{cursor:default;}
-  .tvrow .tvname{flex:1; border:1px solid #bbb; border-radius:6px; padding:8px; font-size:16px; font-weight:600; -webkit-appearance:none;}
-  .tvrow .mini{flex:none; width:38px; height:38px; border-radius:8px; border:1px solid #c7ccd4; background:#f4f5f7; font-size:16px; font-weight:800;}
+  /* 품목 검색 */
+  .tvsearch{position:sticky; top:102px; z-index:17; background:#eceef1; padding:4px 0 10px; display:flex; gap:8px;}
+  .tvsearch input{flex:1; min-width:0; height:48px; background:#fff; border:2px solid #2f6fe0; border-radius:12px; padding:0 14px; font-size:16px; font-weight:700; color:#111; -webkit-appearance:none;}
+  .tvsearch input::placeholder{color:#99a; font-weight:600;}
+  .tvsearch input::-webkit-search-cancel-button{-webkit-appearance:none; display:none;}
+  .tvsearch .clr{flex:none; width:48px; height:48px; border-radius:12px; border:1px solid #c7ccd4; background:#fff; font-size:18px; font-weight:900; color:#667;}
+  .tvrow .tnm small{display:block; margin-top:3px; color:#2f6fe0; font-size:12px; font-weight:700;}
+  .tvempty{background:#fff; border:1px dashed #c7ccd4; border-radius:11px; padding:14px; color:#667; font-size:14px; line-height:1.6;}
+  .tvempty .btn{margin-top:10px; width:100%; min-height:48px; font-size:15px;}
+  .tvrow .tvname{flex:1; min-width:0; border:1px solid #bbb; border-radius:6px; padding:8px; font-size:16px; font-weight:600; -webkit-appearance:none;}
+  .tvrow .mini{flex:none; width:44px; height:44px; border-radius:8px; border:1px solid #c7ccd4; background:#f4f5f7; font-size:16px; font-weight:800;}
   .tvrow .mini.del{color:#e04747; border-color:#f0b6b6;}
   .tvrow .mini.hlon{background:#ffe23d; border-color:#e6c700; color:#5a4b00;}
   .tvrow .mini.hlbtn{min-width:56px; font-size:13px; font-weight:800; padding:0 8px;}
@@ -379,6 +388,77 @@ const MONOMART_ITEMS=["덴뿌라코","문어가라아게","닭껍질교자","타
 const MONOMART_STORES=["비원","하제","시오리","룸","한식","한"];
 const DEFAULT_TV_TEMPLATE='안녕하세요! 사당 "{store}" 입니다\n\n{items}\n\n발주부탁드리겠습니다. 감사합니다 !';
 function monomartVendor(){return {id:"monomart",name:"모노마트",kind:"text",emoji:"🚚",storeNames:MONOMART_STORES.slice(),activeStore:0,items:MONOMART_ITEMS.map(n=>({id:uid(),name:n})),checked:{},qty:{},template:DEFAULT_TV_TEMPLATE};}
+/* 인터넷 발주 (카톡 인터넷발주방 1년치에서 뽑은 비원 품목, 자주 시키는 순) */
+const INTERNET_ITEMS=["닭정육","메로","방울토마토","트러플소스","먹태","나짬소스","구운마늘양파 토마토소스","멸균우유","마요네즈","단무지","락교","초생강","홀토마토","케이준 드레싱","그라나파다노","칠리소스","포마스오일","초장","자라 파스타면","오뚜기 치킨파우더","시치미","함초소금","트러플오일","간장","소세지","짜장소스","쇼유라면 스프","황도","냉동딸기","감자샐러드",
+  "카누","우롱차","햇반","맥심 모카골드","레몬시럽","모히또시럽","얼그레이시럽","논알콜시럽","싱하 탄산수","컵라면","짜파게티",
+  "고체연료","모닝랩","롤백 미니","롤백 중","볏짚","해동지","포스용지","숯 점화통","짤주머니","정제기 필터","페이퍼타올","두루마리 휴지","1회용 앞치마","페브리즈","바이오크린콜","방향제","가글","가글컵","탈취제","화장실 세정제"];
+const INTERNET_TEMPLATE='{store}\n{items}\n발주해주세요';
+function internetVendor(){return {id:"internet",name:"인터넷",kind:"text",emoji:"🛒",storeNames:MONOMART_STORES.slice(),activeStore:0,items:INTERNET_ITEMS.map(n=>({id:uid(),name:n})),checked:{},qty:{},template:INTERNET_TEMPLATE};}
+const TV_DEFAULTS={monomart:{items:MONOMART_ITEMS,template:DEFAULT_TV_TEMPLATE},internet:{items:INTERNET_ITEMS,template:INTERNET_TEMPLATE}};
+function tvDefaults(v){return TV_DEFAULTS[v.id]||TV_DEFAULTS.monomart;}
+
+/* 품목 검색용 같은말 묶음. 한 줄 = 같은 품목을 부르는 말들 (카톡방에서 실제로 쓴 말 + 흔히 부르는 말).
+   품목 이름이 이 중 하나와 같으면, 나머지 말로 검색해도 그 품목이 나온다. 새 묶음은 줄을 추가하면 됨. */
+const ITEM_SYNONYMS=[
+  ["닭정육","정육","달정육","닭다리살","닭다리정육","냉동닭다리","닭고기","닭"],
+  ["메로","매로","메로구이","메로살","이빨고기"],
+  ["방울토마토","방토","방울","방울토","체리토마토","대추토마토"],
+  ["트러플소스","트러플","트러플페이스트","트러플크림","송로버섯"],
+  ["먹태","먹태포","먹태채"],
+  ["나짬소스","나짬","백탕","백탕소스","나가사키 짬뽕소스","나가사키","나가사키짬뽕","짬뽕소스","백짬뽕","하얀짬뽕"],
+  ["구운마늘양파 토마토소스","구운양파","구운양파소스","구운마늘","구운마늘소스","구운마늘양파","구운마늘양파소스","구운토마토소스","마늘토마토소스","토마토소스","토마토스파게티소스","스파게티소스","파스타소스","토소"],
+  ["멸균우유","우유","멸균"],
+  ["마요네즈","마요","마요네스"],
+  ["단무지","다꽝","다쿠앙"],
+  ["락교","락꾜","랏쿄","락쿄","염교"],
+  ["초생강","적초생강","초생","생강","가리","베니쇼가"],
+  ["홀토마토","토마토홀","홀토","토마토캔","캔토마토"],
+  ["케이준 드레싱","케이준","케이쥰","케이준소스","케이준드레싱","드레싱"],
+  ["그라나파다노","그라나","파다노","빠다노","그라나파다노치즈","파마산","파르메산","치즈"],
+  ["칠리소스","칠리","스위트칠리"],
+  ["포마스오일","포마스","올리브유","올리브오일","올리브"],
+  ["초장","초고추장","실장님초장"],
+  ["자라 파스타면","자라면","자라","파스타면","파스타","스파게티면","스파게티"],
+  ["오뚜기 치킨파우더","치킨파우더","파우더","튀김가루","치킨튀김가루"],
+  ["시치미","시찌미","칠미","시치미토가라시"],
+  ["함초소금","함초","소금","굵은소금"],
+  ["간장","쇼유","진간장"],
+  ["소세지","소시지","비엔나"],
+  ["짜장소스","짜장","춘장"],
+  ["쇼유라면 스프","쇼우라면","쇼유라면","라면스프","라멘스프"],
+  ["황도","복숭아","황도캔"],
+  ["냉동딸기","냉딸","딸기"],
+  ["감자샐러드","감샐","감자사라다","사라다","포테이토샐러드"],
+  ["카누","키누","아메리카노","원두커피"],
+  ["우롱차","우롱","우롱티백","티백"],
+  ["햇반","오뚜기밥","즉석밥","공기밥","밥"],
+  ["맥심 모카골드","믹스커피","커피믹스","모카골드","맥심"],
+  ["모히또시럽","모히토시럽","모히또","모히토"],
+  ["얼그레이시럽","얼그레이"],
+  ["논알콜시럽","논알콜","무알콜"],
+  ["싱하 탄산수","탄산수","싱하","소다"],
+  ["컵라면","라면","사발면","육개장"],
+  ["짜파게티","짜파","짜파케티","짜왕"],
+  ["고체연료","고체","연료","고체원료"],
+  ["모닝랩","랩","비닐랩","위생랩"],
+  ["롤백 미니","미니롤백","롤백미니","롤백 소","롤백소","롤팩","크린백","위생백","위생봉투","비닐봉투"],
+  ["롤백 중","롤백중","중롤백","롤팩 중","크린백 중","롤팩","크린백","위생백","위생봉투","비닐봉투"],
+  ["볏짚","볏집","짚"],
+  ["해동지","드립시트"],
+  ["포스용지","영수증","영수증용지","빌지","감열지","감광전표","포스지"],
+  ["숯 점화통","점화통","숯점화통","숯","차콜스타터"],
+  ["짤주머니","짤주","짜주머니","짤봉"],
+  ["정제기 필터","정제기","정제필터","기름필터","필터"],
+  ["페이퍼타올","페퍼타올","키친타올","핸드타올","종이타올"],
+  ["두루마리 휴지","휴지","두루마리","롤휴지","화장지"],
+  ["1회용 앞치마","앞치마","일회용앞치마"],
+  ["페브리즈","페브","섬유탈취제"],
+  ["바이오크린콜","크린콜","클린콜","바이오클린콜","소독제"],
+  ["방향제","디퓨저"],
+  ["가글","구강청결제","리스테린"],
+  ["가글컵","종이컵"],
+  ["화장실 세정제","세정제","화장실세제","변기세정제","홈스타"]
+];
 const BOARD_STORES=["하제","시오리","룸","한식","한"];
 function boardVendor(){return {id:"biwon",name:"비원발주",kind:"board",emoji:"📋",storeNames:BOARD_STORES.slice(),activeStore:0,lines:[]};}
 const SASHIMI_ORDER_URL="https://wholesale.tpirates.com/order/760873C917";
@@ -989,12 +1069,73 @@ function serverHTML(){
 
   <p style="color:#889">결론: 지금은 "각자 만들어 카톡에 던지기"용으로 충분. 중앙취합·집계가 필요해지는 시점에 방법 A부터 붙이면 된다.</p>`;
 }
-/* ===== 모노마트 (텍스트 발주) ===== */
-let tvEdit=false;
+/* ===== 모노마트·인터넷 (텍스트 발주) ===== */
+let tvEdit=false, tvQuery="";
 function VT(){return DB.vendors[curVendor];}
+
+/* --- 품목 검색: 이름 + 같은말 묶음 + 초성(ㄷㅈㅇ) --- */
+function synNorm(s){return String(s||"").toLowerCase().replace(/[\s·.,\-_/()]+/g,"");}
+const SYN_INDEX=(()=>{const m={}; ITEM_SYNONYMS.forEach(g=>g.forEach(t=>{const k=synNorm(t); (m[k]=m[k]||[]).push(g);})); return m;})();
+const CHO="ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+function choOf(s){let r=""; for(const ch of s){const c=ch.charCodeAt(0); r+=(c>=0xAC00&&c<=0xD7A3)?CHO[Math.floor((c-0xAC00)/588)]:ch;} return r;}
+function itemTerms(name){ // [품목이름, 같은말...] 중복 없이
+  const out=[name], seen={[synNorm(name)]:1};
+  (SYN_INDEX[synNorm(name)]||[]).forEach(g=>g.forEach(t=>{const k=synNorm(t); if(!seen[k]){seen[k]=1; out.push(t);}}));
+  return out;
+}
+function itemMatch(name,query){ // 못 찾으면 null, 찾으면 {score, term}
+  const q=synNorm(query); if(!q) return {score:0,term:name};
+  const isCho=/^[ㄱ-ㅎ]+$/.test(q);
+  let best=null;
+  itemTerms(name).forEach((t,i)=>{
+    const k=synNorm(t); let s=0;
+    if(isCho){ const c=choOf(k); if(c.startsWith(q)) s=4; else if(c.includes(q)) s=2; }
+    else if(k===q) s=8;
+    else if(k.startsWith(q)) s=6;
+    else if(k.includes(q)) s=4;
+    else if(k.length>=2&&q.includes(k)) s=3;   // "백탕소스요" 처럼 길게 말해도
+    if(s&&i===0) s+=1;                          // 같은 점수면 품목 이름으로 찾은 걸 먼저
+    if(s&&(!best||s>best.score)) best={score:s,term:t};
+  });
+  return best;
+}
+function tvApplySearch(){
+  const v=VT(), list=$('#tvList'); if(!list) return;
+  const q=tvQuery.trim();
+  const rows=[...list.querySelectorAll('.tvrow')];
+  const hits=[];
+  rows.forEach(row=>{
+    const idx=v.items.findIndex(x=>x.id===row.dataset.iid), it=v.items[idx]; if(!it) return;
+    const m=q?itemMatch(it.name,q):{score:0,term:it.name};
+    row.classList.toggle('hide',!m);
+    const hint=row.querySelector('.tnm small');
+    if(m){ hits.push({row,score:m.score,idx});
+      if(!q){ hint.textContent=""; hint.classList.add('hide'); }
+      else{
+        const others=itemTerms(it.name).slice(1).filter(t=>t!==m.term);
+        hint.textContent=(m.term!==it.name)
+          ? m.term+" = "+it.name
+          : (others.length?"같은 말: "+others.slice(0,3).join(" · "):"");
+        hint.classList.toggle('hide',!hint.textContent);
+      }
+    }
+  });
+  hits.sort((a,b)=>b.score-a.score||a.idx-b.idx); // 검색어 지우면 원래 순서로
+  hits.forEach(h=>list.appendChild(h.row));
+  const empty=$('#tvEmpty');
+  if(empty){
+    empty.classList.toggle('hide',!q||hits.length>0);
+    if(q&&!hits.length){ empty.querySelector('.q').textContent=q; empty.querySelector('.btn').textContent="＋ ‘"+q+"’ 품목 추가하고 체크"; }
+  }
+}
+function tvAddFromSearch(){
+  const nm=tvQuery.trim(); if(!nm) return;
+  const it={id:uid(),name:nm}; VT().items.push(it); VT().checked[it.id]=true; saveDB(); renderTvBody(); toast("추가하고 체크함: "+nm);
+}
+
 function openTextVendor(){
-  tvEdit=false;
-  const v=VT(); if(!v.qty)v.qty={}; if(!v.template)v.template=DEFAULT_TV_TEMPLATE; saveDB();
+  tvEdit=false; tvQuery="";
+  const v=VT(); if(!v.qty)v.qty={}; if(!v.template)v.template=tvDefaults(v).template; saveDB();
   $('#home').classList.add('hide'); $('#sheet').classList.add('hide'); $('#textsheet').classList.add('hide');
   showVoiceFabs(false); $('#textsheet').classList.remove('hide');
   $('#tvTitle').textContent=VT().name+" 발주";
@@ -1028,9 +1169,20 @@ function renderTvBody(){
     ta.oninput=e=>{v.template=e.target.value; saveDB();};
   }
 
-  const list=document.createElement('div'); list.className="tvlist";
+  if(!tvEdit){
+    const sb=document.createElement('div'); sb.className="tvsearch";
+    sb.innerHTML=`<input id="tvSearch" type="search" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="🔍 품목 검색 (예: 방토, 백탕, ㄷㅈㅇ)"><button class="clr" aria-label="검색어 지우기">✕</button>`;
+    body.appendChild(sb);
+    const si=sb.querySelector('input'); si.value=tvQuery;
+    si.oninput=e=>{tvQuery=e.target.value; tvApplySearch();};
+    si.onfocus=()=>setTimeout(()=>{try{si.select();}catch(e){}},0); // 다시 누르면 바로 새로 입력
+    si.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault(); si.blur();}};
+    sb.querySelector('.clr').onclick=()=>{tvQuery=""; si.value=""; tvApplySearch(); si.focus();};
+  }
+
+  const list=document.createElement('div'); list.className="tvlist"; list.id=tvEdit?"":"tvList";
   v.items.forEach((it,idx)=>{
-    const row=document.createElement('div'); row.className="tvrow";
+    const row=document.createElement('div'); row.className="tvrow"; row.dataset.iid=it.id;
     if(tvEdit){
       row.classList.add('edit');
       const inp=document.createElement('input'); inp.className="tvname"; inp.value=it.name;
@@ -1043,6 +1195,7 @@ function renderTvBody(){
       const on=!!v.checked[it.id]; row.classList.toggle('on',on);
       const ck=document.createElement('span'); ck.className="ck"; ck.textContent=on?'✔':'';
       const nm=document.createElement('span'); nm.className="tnm"; nm.textContent=it.name;
+      const hint=document.createElement('small'); hint.className="hide"; nm.appendChild(hint);
       const qi=document.createElement('input'); qi.className="tvqty"; qi.type="text"; qi.inputMode="text"; qi.placeholder="수량"; qi.value=v.qty[it.id]||"";
       qi.onclick=e=>e.stopPropagation();
       qi.oninput=e=>{const val=e.target.value; if(val.trim()){v.qty[it.id]=val; v.checked[it.id]=true;} else {delete v.qty[it.id];}
@@ -1053,6 +1206,11 @@ function renderTvBody(){
     list.appendChild(row);
   });
   body.appendChild(list);
+  if(!tvEdit){
+    const em=document.createElement('div'); em.id="tvEmpty"; em.className="tvempty hide";
+    em.innerHTML=`‘<b class="q"></b>’ 품목이 없어요.<button class="btn acc" onclick="tvAddFromSearch()"></button>`;
+    body.appendChild(em);
+  }
 
   if(tvEdit){
     const add=document.createElement('div'); add.className="tvadd";
@@ -1068,6 +1226,7 @@ function renderTvBody(){
       <div class="hint" style="padding:8px 2px 0">가게 선택 → 품목 체크·수량 입력 → 공유(또는 복사). 문구는 편집에서 바꿀 수 있음.</div>`;
     body.appendChild(pv);
   }
+  tvApplySearch();
   updateTvPreview();
 }
 function tvMessage(){
@@ -1108,8 +1267,8 @@ function tvAddItem(){ const el=$('#tvNewName'); const nm=(el?el.value:"").trim()
 function tvDel(idx){ const it=VT().items[idx]; VT().items.splice(idx,1); delete VT().checked[it.id]; if(VT().qty)delete VT().qty[it.id]; saveDB(); renderTvBody(); toast("삭제됨"); }
 function tvMove(idx,dir){ const a=VT().items, j=idx+dir; if(j<0||j>=a.length)return; const t=a[idx]; a[idx]=a[j]; a[j]=t; saveDB(); renderTvBody(); }
 function tvClearChecks(){ VT().checked={}; VT().qty={}; saveDB(); renderTvBody(); }
-function tvResetItems(){ if(!confirm("모노마트 품목을 기본목록으로 되돌릴까? 편집내용 사라짐."))return; VT().items=MONOMART_ITEMS.map(n=>({id:uid(),name:n})); VT().checked={}; VT().qty={}; saveDB(); renderTvBody(); }
-function tvResetTpl(){ VT().template=DEFAULT_TV_TEMPLATE; saveDB(); renderTvBody(); toast("문구 기본값으로"); }
+function tvResetItems(){ if(!confirm(VT().name+" 품목을 기본목록으로 되돌릴까? 편집내용 사라짐."))return; VT().items=tvDefaults(VT()).items.map(n=>({id:uid(),name:n})); VT().checked={}; VT().qty={}; saveDB(); renderTvBody(); }
+function tvResetTpl(){ VT().template=tvDefaults(VT()).template; saveDB(); renderTvBody(); toast("문구 기본값으로"); }
 
 /* ===== 비원발주 (손글씨 화이트보드 이미지) ===== */
 function VB(){ return DB.vendors[curVendor]; }
@@ -1263,6 +1422,7 @@ function resetTemplate(){if(!confirm(`${S().name} 품목을 기본폼(원본)으
   S().template=defaultTemplate(); S().draft={}; saveDB(); renderForm(); toast("기본폼 복원");}
 
 if(!DB.vendors.some(v=>v.id==="monomart")){ DB.vendors.push(monomartVendor()); saveDB(); }
+if(!DB.vendors.some(v=>v.id==="internet")){ const mi=DB.vendors.findIndex(v=>v.id==="monomart"); DB.vendors.splice(mi+1,0,internetVendor()); saveDB(); }
 if(!DB.vendors.some(v=>v.id==="biwon")){ DB.vendors.push(boardVendor()); saveDB(); }
 (function(){ const bv=DB.vendors.find(v=>v.id==="biwon"); if(bv&&bv.storeNames&&bv.storeNames.includes("비원")){ const wasFirst=bv.activeStore===0; bv.storeNames=bv.storeNames.filter(s=>s!=="비원"); if(bv.activeStore>0)bv.activeStore--; if(wasFirst)bv.activeStore=0; if(bv.activeStore>=bv.storeNames.length)bv.activeStore=0; saveDB(); } })();
 renderHome();
