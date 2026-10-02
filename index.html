@@ -129,6 +129,7 @@
   .tvbody{max-width:640px; margin:0 auto; padding:12px 12px 90px;}
   .tvbar{display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
   .tvcount{color:#2f6fe0; font-weight:800; font-size:13px;}
+  .tvbar .btn{min-height:44px;}
   .tvlist{display:flex; flex-direction:column; gap:8px;}
   .tvrow{display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #dfe3ea; border-radius:11px; padding:13px 14px; font-size:16px; font-weight:700; color:#111; cursor:pointer;}
   .tvrow.on{border-color:#1fa85a; background:#f2fbf6;}
@@ -137,6 +138,8 @@
   .tvrow.on .ck{border-color:#1fa85a; background:#1fa85a;}
   .tvrow .tnm{flex:1;}
   .tvrow .tvqty{flex:none; width:84px; border:1px solid #c7ccd4; border-radius:8px; padding:8px 6px; font-size:15px; font-weight:800; text-align:center; color:#111; background:#fff;}
+  .tvrow .tvqty{height:44px;}
+  .tvpreview .mrow .btn{min-height:44px;}
   .tvrow .tvqty:focus{outline:none; border-color:#2f6fe0; background:#f2f7ff;}
   .tvadd{display:flex; gap:8px; margin-top:10px;}
   .tvadd input{flex:1; background:#fff; border:1px dashed #9aa3af; border-radius:10px; padding:12px 14px; font-size:15px;}
@@ -1184,7 +1187,7 @@ function renderTvStores(){
   const el=$('#tvStores'); el.innerHTML="";
   VT().storeNames.forEach((nm,i)=>{const b=document.createElement('button');
     b.className="tab"+(i===VT().activeStore?" on":""); b.textContent=nm;
-    b.onclick=()=>{VT().activeStore=i; saveDB(); renderTvStores(); renderTvBody();};
+    b.onclick=()=>{VT().activeStore=i; tvQuery=""; saveDB(); renderTvStores(); renderTvBody();};
     el.appendChild(b);});
 }
 function renderTvBody(){
@@ -1214,7 +1217,7 @@ function renderTvBody(){
   }
   if(!tvEdit){
     const sb=document.createElement('div'); sb.className="tvsearch";
-    sb.innerHTML=`<input id="tvSearch" type="search" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="🔍 품목 검색 (예: 방토, 백탕, ㄷㅈㅇ)"><button class="clr" aria-label="검색어 지우기">✕</button>`;
+    sb.innerHTML=`<input id="tvSearch" type="search" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="🔍 품목 검색 (방토, 백탕, ㄷㅈㅇ)"><button class="clr" aria-label="검색어 지우기">✕</button>`;
     body.appendChild(sb);
     const si=sb.querySelector('input'); si.value=tvQuery;
     si.oninput=e=>{tvQuery=e.target.value; tvApplySearch();};
