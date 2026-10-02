@@ -142,6 +142,12 @@
   .tvadd input{flex:1; background:#fff; border:1px dashed #9aa3af; border-radius:10px; padding:12px 14px; font-size:15px;}
   .tvtpl{width:100%; min-height:120px; border:1px solid #c7ccd4; border-radius:8px; padding:10px 12px; font-size:14px; line-height:1.6; font-family:inherit; resize:vertical;}
   .tvrow.edit{cursor:default;}
+  /* 가게별 자주 / 전체 보기 */
+  .tvview{display:flex; gap:6px; margin-bottom:6px; background:#dfe3ea; border-radius:12px; padding:4px;}
+  .tvview button{flex:1; min-height:44px; border:0; border-radius:9px; background:transparent; color:#556; font-size:15px; font-weight:800;}
+  .tvview button.on{background:#fff; color:#111; box-shadow:0 1px 4px rgba(0,0,0,.15);}
+  .tvview small{color:#2f6fe0; font-weight:800; margin-left:2px;}
+  .tvrow.edit{gap:6px; padding:10px;}
   /* 품목 검색 */
   .tvsearch{position:sticky; top:102px; z-index:17; background:#eceef1; padding:4px 0 10px; display:flex; gap:8px;}
   .tvsearch input{flex:1; min-width:0; height:48px; background:#fff; border:2px solid #2f6fe0; border-radius:12px; padding:0 14px; font-size:16px; font-weight:700; color:#111; -webkit-appearance:none;}
@@ -389,12 +395,22 @@ const MONOMART_STORES=["비원","하제","시오리","룸","한식","한"];
 const DEFAULT_TV_TEMPLATE='안녕하세요! 사당 "{store}" 입니다\n\n{items}\n\n발주부탁드리겠습니다. 감사합니다 !';
 function monomartVendor(){return {id:"monomart",name:"모노마트",kind:"text",emoji:"🚚",storeNames:MONOMART_STORES.slice(),activeStore:0,items:MONOMART_ITEMS.map(n=>({id:uid(),name:n})),checked:{},qty:{},template:DEFAULT_TV_TEMPLATE};}
 /* 인터넷 발주 (카톡 인터넷발주방 1년치에서 뽑은 비원 품목, 자주 시키는 순) */
-const INTERNET_ITEMS=["닭정육","메로","방울토마토","트러플소스","먹태","나짬소스","구운마늘양파 토마토소스","멸균우유","마요네즈","단무지","락교","초생강","홀토마토","케이준 드레싱","그라나파다노","칠리소스","포마스오일","초장","자라 파스타면","오뚜기 치킨파우더","시치미","함초소금","트러플오일","간장","소세지","짜장소스","쇼유라면 스프","황도","냉동딸기","감자샐러드",
-  "카누","우롱차","햇반","맥심 모카골드","레몬시럽","모히또시럽","얼그레이시럽","논알콜시럽","싱하 탄산수","컵라면","짜파게티",
-  "고체연료","모닝랩","롤백 미니","롤백 중","볏짚","해동지","포스용지","숯 점화통","짤주머니","정제기 필터","페이퍼타올","두루마리 휴지","1회용 앞치마","페브리즈","바이오크린콜","방향제","가글","가글컵","탈취제","화장실 세정제"];
+const INTERNET_ITEMS=["닭정육","메로","방울토마토","트러플소스","먹태","나짬소스","구운마늘양파 토마토소스","멸균우유","마요네즈","단무지","락교","초생강","홀토마토","케이준 드레싱","그라나파다노","칠리소스","포마스오일","초장","자라 파스타면","오뚜기 치킨파우더","시치미","함초소금","트러플오일","간장","소세지","짜장소스","쇼유라면 스프","황도","냉동딸기","감자샐러드","국거리","부침가루",
+  "카누","우롱차","햇반","맥심 모카골드","레몬시럽","모히또시럽","얼그레이시럽","논알콜시럽","싱하 탄산수","컵라면","짜파게티","참크래커",
+  "고체연료","모닝랩","롤백 미니","롤백 중","볏짚","해동지","포스용지","숯 점화통","짤주머니","정제기 필터","페이퍼타올","두루마리 휴지","1회용 앞치마","수저집","페브리즈","바이오크린콜","방향제","가글","가글컵","탈취제","화장실 세정제"];
 const INTERNET_TEMPLATE='{store}\n{items}\n발주해주세요';
-function internetVendor(){return {id:"internet",name:"인터넷",kind:"text",emoji:"🛒",storeNames:MONOMART_STORES.slice(),activeStore:0,items:INTERNET_ITEMS.map(n=>({id:uid(),name:n})),checked:{},qty:{},template:INTERNET_TEMPLATE};}
-const TV_DEFAULTS={monomart:{items:MONOMART_ITEMS,template:DEFAULT_TV_TEMPLATE},internet:{items:INTERNET_ITEMS,template:INTERNET_TEMPLATE}};
+/* 가게별 자주 시키는 품목 (카톡방 1년치 가게별 집계, 많이 시킨 순). 가게 탭을 누르면 이것만 먼저 보임 */
+const INTERNET_STORE_FAVS={
+  "비원":["닭정육","방울토마토","메로","구운마늘양파 토마토소스","마요네즈","홀토마토","고체연료","먹태","나짬소스","초생강","단무지","트러플소스","멸균우유","락교","그라나파다노","케이준 드레싱","칠리소스","모닝랩","자라 파스타면","초장","햇반","포마스오일","오뚜기 치킨파우더","우롱차","카누","함초소금","시치미","롤백 중","볏짚","포스용지","페브리즈","해동지","숯 점화통"],
+  "하제":["방울토마토","고체연료","초생강","트러플소스","락교","단무지","먹태","햇반","나짬소스","해동지","자라 파스타면","닭정육","포스용지","칠리소스","가글","카누","수저집","케이준 드레싱","마요네즈","그라나파다노"],
+  "시오리":["닭정육","구운마늘양파 토마토소스","홀토마토","먹태","초장","자라 파스타면","고체연료","칠리소스","나짬소스","감자샐러드","햇반","오뚜기 치킨파우더","포스용지","마요네즈","모닝랩","국거리","참크래커","수저집","가글","롤백 미니","컵라면","카누"],
+  "룸":["방울토마토","닭정육","먹태","햇반","고체연료","포스용지","마요네즈","나짬소스","자라 파스타면","칠리소스","오뚜기 치킨파우더"],
+  "한식":["햇반","오뚜기 치킨파우더","구운마늘양파 토마토소스","부침가루","자라 파스타면","나짬소스","포스용지","컵라면","먹태","마요네즈"],
+  "한":["닭정육","고체연료","먹태","마요네즈","나짬소스","칠리소스","포스용지","자라 파스타면","햇반","롤백 미니","롤백 중","황도","포마스오일","1회용 앞치마","오뚜기 치킨파우더","카누","모닝랩"]
+};
+function buildFavs(v,map){ const byName={}; v.items.forEach(i=>{if(!byName[i.name])byName[i.name]=i.id;}); const f={}; Object.keys(map||{}).forEach(st=>f[st]=map[st].map(n=>byName[n]).filter(Boolean)); return f; }
+function internetVendor(){const v={id:"internet",name:"인터넷",kind:"text",emoji:"🛒",storeNames:MONOMART_STORES.slice(),activeStore:0,items:INTERNET_ITEMS.map(n=>({id:uid(),name:n})),checked:{},qty:{},template:INTERNET_TEMPLATE}; v.favs=buildFavs(v,INTERNET_STORE_FAVS); return v;}
+const TV_DEFAULTS={monomart:{items:MONOMART_ITEMS,template:DEFAULT_TV_TEMPLATE,favs:{}},internet:{items:INTERNET_ITEMS,template:INTERNET_TEMPLATE,favs:INTERNET_STORE_FAVS}};
 function tvDefaults(v){return TV_DEFAULTS[v.id]||TV_DEFAULTS.monomart;}
 
 /* 품목 검색용 같은말 묶음. 한 줄 = 같은 품목을 부르는 말들 (카톡방에서 실제로 쓴 말 + 흔히 부르는 말).
@@ -457,6 +473,10 @@ const ITEM_SYNONYMS=[
   ["방향제","디퓨저"],
   ["가글","구강청결제","리스테린"],
   ["가글컵","종이컵"],
+  ["국거리","국거리고기","소고기국거리","소국거리"],
+  ["부침가루","부침"],
+  ["참크래커","크래커"],
+  ["수저집","수저봉투","수저커버","수저포장지"],
   ["화장실 세정제","세정제","화장실세제","변기세정제","홈스타"]
 ];
 const BOARD_STORES=["하제","시오리","룸","한식","한"];
@@ -1099,14 +1119,31 @@ function itemMatch(name,query){ // 못 찾으면 null, 찾으면 {score, term}
   });
   return best;
 }
+/* --- 가게별 자주 품목 (가게 탭 누르면 그 가게 것만, '전체'로 전부) --- */
+function tvStoreName(){const v=VT(); return v.storeNames[v.activeStore];}
+function tvFavs(){const v=VT(); return (v.favs&&v.favs[tvStoreName()])||[];}
+function tvFavMode(){return !VT().showAll && tvFavs().length>0;}
+function tvSetView(all){VT().showAll=all; saveDB(); renderTvBody(); window.scrollTo(0,0);}
+function tvToggleFav(id,btn){
+  const v=VT(), st=tvStoreName(); if(!v.favs)v.favs={}; const f=v.favs[st]=v.favs[st]||[];
+  const i=f.indexOf(id); if(i>=0)f.splice(i,1); else f.push(id);
+  saveDB(); btn.classList.toggle('hlon',i<0);
+  const c=$('#tvFavCnt'); if(c)c.textContent=f.length;
+}
+function tvAddToStoreFavs(id){const v=VT(), st=tvStoreName(); if(v.favs&&v.favs[st]&&v.favs[st].length) v.favs[st].push(id);}
 function tvApplySearch(){
   const v=VT(), list=$('#tvList'); if(!list) return;
   const q=tvQuery.trim();
+  const favMode=!q&&tvFavMode(), favs=tvFavs();   // 검색할 땐 전체에서 찾음
   const rows=[...list.querySelectorAll('.tvrow')];
   const hits=[];
   rows.forEach(row=>{
-    const idx=v.items.findIndex(x=>x.id===row.dataset.iid), it=v.items[idx]; if(!it) return;
-    const m=q?itemMatch(it.name,q):{score:0,term:it.name};
+    let idx=v.items.findIndex(x=>x.id===row.dataset.iid); const it=v.items[idx]; if(!it) return;
+    let m=q?itemMatch(it.name,q):{score:0,term:it.name};
+    if(favMode){ const fi=favs.indexOf(it.id);
+      if(fi>=0) idx=fi;                               // 그 가게에서 많이 시킨 순
+      else if(v.checked[it.id]) idx=10000+idx;        // 체크해둔 건 아래에 같이 보여줌
+      else m=null; }
     row.classList.toggle('hide',!m);
     const hint=row.querySelector('.tnm small');
     if(m){ hits.push({row,score:m.score,idx});
@@ -1130,7 +1167,7 @@ function tvApplySearch(){
 }
 function tvAddFromSearch(){
   const nm=tvQuery.trim(); if(!nm) return;
-  const it={id:uid(),name:nm}; VT().items.push(it); VT().checked[it.id]=true; saveDB(); renderTvBody(); toast("추가하고 체크함: "+nm);
+  const it={id:uid(),name:nm}; VT().items.push(it); VT().checked[it.id]=true; tvAddToStoreFavs(it.id); saveDB(); renderTvBody(); toast("추가하고 체크함: "+nm);
 }
 
 function openTextVendor(){
@@ -1147,14 +1184,14 @@ function renderTvStores(){
   const el=$('#tvStores'); el.innerHTML="";
   VT().storeNames.forEach((nm,i)=>{const b=document.createElement('button');
     b.className="tab"+(i===VT().activeStore?" on":""); b.textContent=nm;
-    b.onclick=()=>{VT().activeStore=i; saveDB(); renderTvStores(); updateTvPreview();};
+    b.onclick=()=>{VT().activeStore=i; saveDB(); renderTvStores(); renderTvBody();};
     el.appendChild(b);});
 }
 function renderTvBody(){
   const v=VT(), body=$('#tvBody'); body.innerHTML="";
   const bar=document.createElement('div'); bar.className="tvbar";
   bar.innerHTML=tvEdit
-    ? `<button class="btn sm warn" onclick="tvResetItems()">기본목록 복원</button><span class="tvcount">↑↓ 순서 · ✕ 삭제 · 이름 눌러 수정</span>`
+    ? `<button class="btn sm warn" onclick="tvResetItems()">기본목록 복원</button><span class="tvcount">★ = ${esc(tvStoreName())} 자주 품목(<span id="tvFavCnt">${tvFavs().length}</span>) · ↑↓ 순서 · ✕ 삭제</span>`
     : `<button class="btn sm" onclick="tvClearChecks()">체크 초기화</button><span class="tvcount" id="tvCount"></span>`;
   body.appendChild(bar);
 
@@ -1169,6 +1206,12 @@ function renderTvBody(){
     ta.oninput=e=>{v.template=e.target.value; saveDB();};
   }
 
+  if(!tvEdit&&tvFavs().length){
+    const vw=document.createElement('div'); vw.className="tvview";
+    const st=esc(tvStoreName()), fm=tvFavMode();
+    vw.innerHTML=`<button class="${fm?'on':''}" onclick="tvSetView(false)">★ ${st} 자주 <small>${tvFavs().length}</small></button><button class="${fm?'':'on'}" onclick="tvSetView(true)">전체 <small>${v.items.length}</small></button>`;
+    body.appendChild(vw);
+  }
   if(!tvEdit){
     const sb=document.createElement('div'); sb.className="tvsearch";
     sb.innerHTML=`<input id="tvSearch" type="search" enterkeyhint="done" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="🔍 품목 검색 (예: 방토, 백탕, ㄷㅈㅇ)"><button class="clr" aria-label="검색어 지우기">✕</button>`;
@@ -1187,10 +1230,11 @@ function renderTvBody(){
       row.classList.add('edit');
       const inp=document.createElement('input'); inp.className="tvname"; inp.value=it.name;
       inp.onchange=e=>{it.name=e.target.value.trim()||it.name; saveDB();};
+      const fav=document.createElement('button'); fav.className="mini"+(tvFavs().includes(it.id)?" hlon":""); fav.textContent="★"; fav.setAttribute('aria-label',tvStoreName()+" 자주 품목"); fav.onclick=()=>tvToggleFav(it.id,fav);
       const up=document.createElement('button'); up.className="mini"; up.textContent="↑"; up.onclick=()=>tvMove(idx,-1);
       const dn=document.createElement('button'); dn.className="mini"; dn.textContent="↓"; dn.onclick=()=>tvMove(idx,1);
       const del=document.createElement('button'); del.className="mini del"; del.textContent="✕"; del.onclick=()=>tvDel(idx);
-      row.append(inp,up,dn,del);
+      row.append(inp,fav,up,dn,del);
     } else {
       const on=!!v.checked[it.id]; row.classList.toggle('on',on);
       const ck=document.createElement('span'); ck.className="ck"; ck.textContent=on?'✔':'';
@@ -1263,11 +1307,11 @@ function fallbackCopy(text,done){
   document.body.removeChild(ta);
 }
 function toggleTvEdit(){ tvEdit=!tvEdit; $('#tvEdit').textContent=tvEdit?"✓ 완료":"✎ 편집"; $('#tvEdit').classList.toggle('acc',tvEdit); renderTvBody(); }
-function tvAddItem(){ const el=$('#tvNewName'); const nm=(el?el.value:"").trim(); if(!nm){toast("품목 이름을 적어줘"); if(el)el.focus(); return;} VT().items.push({id:uid(),name:nm}); saveDB(); renderTvBody(); const n=$('#tvNewName'); if(n)n.focus(); toast("추가됨: "+nm); }
-function tvDel(idx){ const it=VT().items[idx]; VT().items.splice(idx,1); delete VT().checked[it.id]; if(VT().qty)delete VT().qty[it.id]; saveDB(); renderTvBody(); toast("삭제됨"); }
+function tvAddItem(){ const el=$('#tvNewName'); const nm=(el?el.value:"").trim(); if(!nm){toast("품목 이름을 적어줘"); if(el)el.focus(); return;} const ni={id:uid(),name:nm}; VT().items.push(ni); tvAddToStoreFavs(ni.id); saveDB(); renderTvBody(); const n=$('#tvNewName'); if(n)n.focus(); toast("추가됨: "+nm); }
+function tvDel(idx){ const it=VT().items[idx]; VT().items.splice(idx,1); if(VT().favs)Object.values(VT().favs).forEach(f=>{const i=f.indexOf(it.id); if(i>=0)f.splice(i,1);}); delete VT().checked[it.id]; if(VT().qty)delete VT().qty[it.id]; saveDB(); renderTvBody(); toast("삭제됨"); }
 function tvMove(idx,dir){ const a=VT().items, j=idx+dir; if(j<0||j>=a.length)return; const t=a[idx]; a[idx]=a[j]; a[j]=t; saveDB(); renderTvBody(); }
 function tvClearChecks(){ VT().checked={}; VT().qty={}; saveDB(); renderTvBody(); }
-function tvResetItems(){ if(!confirm(VT().name+" 품목을 기본목록으로 되돌릴까? 편집내용 사라짐."))return; VT().items=tvDefaults(VT()).items.map(n=>({id:uid(),name:n})); VT().checked={}; VT().qty={}; saveDB(); renderTvBody(); }
+function tvResetItems(){ if(!confirm(VT().name+" 품목을 기본목록으로 되돌릴까? 편집내용 사라짐."))return; VT().items=tvDefaults(VT()).items.map(n=>({id:uid(),name:n})); VT().favs=buildFavs(VT(),tvDefaults(VT()).favs); VT().checked={}; VT().qty={}; saveDB(); renderTvBody(); }
 function tvResetTpl(){ VT().template=tvDefaults(VT()).template; saveDB(); renderTvBody(); toast("문구 기본값으로"); }
 
 /* ===== 비원발주 (손글씨 화이트보드 이미지) ===== */
@@ -1423,6 +1467,9 @@ function resetTemplate(){if(!confirm(`${S().name} 품목을 기본폼(원본)으
 
 if(!DB.vendors.some(v=>v.id==="monomart")){ DB.vendors.push(monomartVendor()); saveDB(); }
 if(!DB.vendors.some(v=>v.id==="internet")){ const mi=DB.vendors.findIndex(v=>v.id==="monomart"); DB.vendors.splice(mi+1,0,internetVendor()); saveDB(); }
+(function(){ const v=DB.vendors.find(v=>v.id==="internet"); if(!v||v.favs) return;
+  const have=new Set(v.items.map(i=>i.name)); INTERNET_ITEMS.forEach(n=>{ if(!have.has(n)) v.items.push({id:uid(),name:n}); });
+  v.favs=buildFavs(v,INTERNET_STORE_FAVS); saveDB(); })();
 if(!DB.vendors.some(v=>v.id==="biwon")){ DB.vendors.push(boardVendor()); saveDB(); }
 (function(){ const bv=DB.vendors.find(v=>v.id==="biwon"); if(bv&&bv.storeNames&&bv.storeNames.includes("비원")){ const wasFirst=bv.activeStore===0; bv.storeNames=bv.storeNames.filter(s=>s!=="비원"); if(bv.activeStore>0)bv.activeStore--; if(wasFirst)bv.activeStore=0; if(bv.activeStore>=bv.storeNames.length)bv.activeStore=0; saveDB(); } })();
 renderHome();
